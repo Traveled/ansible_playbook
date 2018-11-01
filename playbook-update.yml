@@ -1,0 +1,41 @@
+---
+- hosts: raspbian
+  remote_user: root
+  become: yes
+  tasks:
+  - name: update all apt packages
+    apt:
+      upgrade: yes
+      update_cache: yes
+    register: apt_result
+    changed_when: "'No packages will be installed, upgraded, or removed.' not in apt_result.stdout"
+  - debug: var=apt_result
+    when: apt_result.changed
+- hosts: lorien
+  remote_user: root
+  become: yes
+  tasks:
+  - name: update all pkg
+    shell: jexec lorien pkg update
+    register: result_pkg
+    changed_when: "'All repositories are up to date.' not in result_pkg.stdout"
+  - debug: var=result_pkg
+    when: result_pkg.changed
+  - name: upgrade all pkg
+    shell: jexec lorien pkg upgrade --yes
+    register: result_upgrade
+    changed_when: "'Your packages are up to date' not in result_upgrade.stdout"
+  - debug: var=result_upgrade
+    when: result_upgrade.changed
+- hosts: windows
+  tasks:
+  - name: install all critical and security updates
+    win_updates:
+      category_names:
+      - CriticalUpdates
+      - SecurityUpdates
+      state: installed
+    register: update_result
+  - name: reboot host if required
+    win_reboot:
+    when: update_result.reboot_required
